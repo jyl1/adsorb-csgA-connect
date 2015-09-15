@@ -173,15 +173,15 @@ close $datfile
 }
 
 
-
+# Make a note if the file was re-run, since it is in append mode.
 set datfile [open $str_outfile a]
 set vmd_time [clock scan now]
 puts $datfile "BEGINNING $vmd_time"
 close $datfile
 
-
+# Load new molecule
 mol new $str_psf
-
+# Add frames from first dcd file
 set interval_start 0
 set interval_end [expr $interval_start + $window - 1]
 mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
@@ -195,7 +195,7 @@ while {$nf == $window} {
 	mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
 	set nf [molinfo top get numframes]
 }
-
+# Transition from first to second dcd file
 if {$nf < $window} {
 	set df [expr $window-$nf]
 	set interval_start 0
@@ -204,9 +204,12 @@ if {$nf < $window} {
 	set cnt_realtime [expr $cnt_realtime + $window]
 	bfactor "protein" 0 [expr $window-1] $str_outfile $cnt_realtime
 	animate delete all
+	set interval_start [expr $interval_start + $window]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == window} {
+	set interval_start 0
 }
-
-set interval_start [expr $interval_start + $window]
+# Add frames from second dcd file
 set interval_end [expr $interval_start + $window - 1]
 mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
 set nf [molinfo top get numframes]
@@ -219,7 +222,7 @@ while {$nf == $window} {
 	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
 	set nf [molinfo top get numframes]
 }
-
+# Transition from 2nd to 3rd dcd file
 if {$nf < $window} {
 	set df [expr $window-$nf]
 	set interval_start 0
@@ -228,9 +231,12 @@ if {$nf < $window} {
 	set cnt_realtime [expr $cnt_realtime + $window]
 	bfactor "protein" 0 [expr $window-1] $str_outfile $cnt_realtime
 	animate delete all
+	set interval_start [expr $interval_start + $window]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == window} {
+	set interval_start 0
 }
-
-set interval_start [expr $interval_start + $window]
+# Add frames from 3rd dcd file
 set interval_end [expr $interval_start + $window - 1]
 mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
 set nf [molinfo top get numframes]
