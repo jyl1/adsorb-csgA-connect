@@ -249,4 +249,6 @@ while {$nf == $window} {
 	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
 	set nf [molinfo top get numframes]
 }
-
+# Calculate bfactor for the last few frames
+set cnt_realtime [expr $cnt_realtime + $window]
+bfactor "protein" 0 [expr $nf -1] $str_outfile $cnt_realtime
