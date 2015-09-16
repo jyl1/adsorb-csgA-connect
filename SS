@@ -1,0 +1,183 @@
+# YJL 9/16/15
+# csgA adsorption project
+# SS_1.tcl - Outputs the number of residues involved in beta sheets (extended structure, E) and 
+# also outputs the resid of those residues.
+# NB: You have to decide how many dcd files at the moment. (potential future fix)
+# Usage: (under user-edited variables for the wrapper)
+# 	str_psf		= patfhile of the psf file
+#	str_dcd_1	= patfhile of the 1st dcd file
+# 	str_dcd_2	= "			"	  2nd
+#	str_dcd_3	= "			"     3rd
+#	str_outfile	= pathfile of the desired output file, eg out.dat
+#	cutoffDist	= distance in angstroms between protein atom and surface atom to count as contact
+#
+# Output:
+#	Frame #
+#	Number of residues involved in beta sheets
+#	Resid of those residues
+
+# ================ User-edited variables for the wrapper =============
+set str_psf test.psf
+set str_dcd_1 test_short1.dcd
+set str_dcd_2 test_short2.dcd
+set str_dcd_3 test_short3.dcd
+set str_outfile outtest_SS_1.dat
+set loadsize 10
+set str_SS E
+# ================ End user-edited wrapper variables =================
+
+proc SS_1 { SS logFP realtime} {
+	# Open file in append mode
+	set file [open $logFP a]
+
+	# Loop through all the frames
+	set nf [molinfo top get numframes]
+	
+	# Define selections
+	#	Protein backbone alphas
+	set sel [atomselect top "protein and name CA"]
+	#	Protein
+	set prot [atomselect top protein]
+	set ind [$prot get index]
+	
+	# Loop through frames and determine hydrogen bonds
+	for {set i 0} {$i < $nf} {incr i} {
+		# Update selections to frame i
+		$sel frame $i
+		
+		# Update molecule secondary structure (STRIDE)
+		mol ssrecalc top
+		
+		# Calculate specificed Secondary Structure 
+		#	List of residues involved
+		set ssList [$sel get structure]
+		set structList [lsearch -all $ssList $SS]
+		#	Number of residues in structure
+		set n [llength $structList]
+		
+		# Write data to file
+		set frame_num [expr $realtime + $i]
+		puts $file "$frame_num\t$n\t$structList"
+	
+
+	}
+	
+	# Close file to write entire buffer
+	close $file
+	 
+}
+
+proc getCntNum {cutoff selection surf} {
+	set sel $selection
+	set tempInd [lindex [measure contacts $cutoff $sel $surf] 0]
+	set l_tempInd [llength $tempInd]
+	return $l_tempInd
+}
+
+# Make a note if the file was re-run, since it is in append mode.
+set datfile [open $str_outfile a]
+set vmd_time [clock scan now]
+puts $datfile "RUN $vmd_time"
+close $datfile
+
+mol new $str_psf
+set interval_start 0
+set interval_end [expr $loadsize - 1]
+mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+# Load from 1st dcd file
+while {$nf == $loadsize} {
+	set cnt_realtime $interval_start
+	# Function
+	SS_1 $str_SS $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 1st and 2nd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+
+	# Function
+	SS_1 $str_SS $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 2nd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	SS_1 $str_SS $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 2nd and 3rd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	SS_1 $str_SS $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 3rd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	SS_1 $str_SS $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Calculate for the last few frames
+set cnt_realtime [expr $cnt_realtime + $loadsize]
+# Function
+SS_1 $str_SS $str_outfile $cnt_realtime
+
+# Clean up
+mol delete top
+#exit
