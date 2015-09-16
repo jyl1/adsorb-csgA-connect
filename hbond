@@ -1,1 +1,213 @@
-//test
+# YJL 9/14/15
+# csgA adsorption project
+# hbonds_byres_1.tcl - Outputs the number of hydrogen bonds between protein residues (by chemical category
+# and by location) and the total number of protein-water hbonds.
+# NB: You have to decide how many dcd files at the moment. (potential future fix)
+# Usage: (under user-edited variables for the wrapper)
+# 	str_psf		= patfhile of the psf file
+#	str_dcd_1	= patfhile of the 1st dcd file
+# 	str_dcd_2	= "			"	  2nd
+#	str_dcd_3	= "			"     3rd
+#	str_outfile	= pathfile of the desired output file, eg out.dat
+
+# ================ User-edited variables for the wrapper =============
+set str_psf test.psf
+set str_dcd_1 test_short1.dcd
+set str_dcd_2 test_short2.dcd
+set str_dcd_3 test_short3.dcd
+set str_outfile outtest_hbonds_byres_test.dat
+set loadsize 1000
+# ================ End user-edited wrapper variables =================
+
+proc hbonds_byres_1 { logFP realtime} {
+	# Open file in append mode
+	set file [open $logFP a]
+
+	# Loop through all the frames
+	set nf [molinfo top get numframes]
+	
+	# Define selections
+	#	Water
+	set water [atomselect top protein]
+	#	Protein
+	set prot [atomselect top protein]
+	#	Protein subselections
+	#		1. Top
+	set up [atomselect top "protein and ((resid 34 to 41) or \
+		(resid 46 to 53) or (resid 69 to 75) or (resid 92 to 98) or \
+		(resid 113 to 120))"]
+	set up_ind [$up get index]
+	#		1.A Neutral
+	set up_polar [atomselect top "index $up_ind and \
+		resname SER THR CYS ASN GLN TYR HSD"]	
+	#		1.B Positive
+	set up_pos [atomselect top "index $up_ind and \
+		resname ASP GLU"]
+	#		1.C Negative
+	set up_neg [atomselect top "index $up_ind and \
+		resname LYS ARG HIS"]
+	#		1.D Hydrophobic
+	set up_hphobe [atomselect top "index $up_ind and \
+		resname GLY ALA ILE LEU VAL PRO PHE MET TRP"]
+	#		2. Bottom
+	set down [atomselect top "protein and ((resid 24 to 30) or \
+		(resid 46 to 53) or (resid 69 to 75) or (resid 92 to 98) or \
+		(resid 113 to 120))"]
+	set down_ind [$down get index]
+	#		2.A Polar
+	set down_polar [atomselect top "index $down_ind and \
+		resname SER THR CYS ASN GLN TYR HSD"]
+	#		2.B Positive
+	set down_pos [atomselect top "index $down_ind and \
+		resname ASP GLU"]
+	#		2.C Negative
+	set down_neg [atomselect top "index $down_ind and \
+		resname LYS ARG HIS"]
+	#		2.D Hydrophobic
+	set down_hphobe [atomselect top "index $down_ind and \
+		resname GLY ALA ILE LEU VAL PRO PHE MET TRP"]
+	
+	# Loop through frames and determine hydrogen bonds
+	for {set i 0} {$i < $nf} {incr i} {
+		# Update selections to frame i
+		$water frame $i
+		$prot frame $i
+		$up_polar frame $i
+		$up_pos frame $i
+		$up_neg frame $i
+		$up_hphobe frame $i
+		$down_polar frame $i
+		$down_pos frame $i
+		$down_neg frame $i
+		$down_hphobe frame $i
+
+		# Calculate H Bonds
+		set nhb [llength [lindex [measure hbonds 4.8 30 $prot $water] 0]]
+		set nhb_up_polar [llength [lindex [measure hbonds 4.8 30 $up_polar $water] 0]]
+		set nhb_up_pos [llength [lindex [measure hbonds 4.8 30 $up_pos $water] 0]]
+		set nhb_up_neg [llength [lindex [measure hbonds 4.8 30 $up_neg $water] 0]]
+		set nhb_up_hphobe [llength [lindex [measure hbonds 4.8 30 $up_hphobe $water] 0]]
+		set nhb_down_polar [llength [lindex [measure hbonds 4.8 30 $down_polar $water] 0]]
+		set nhb_down_pos [llength [lindex [measure hbonds 4.8 30 $down_pos $water] 0]]
+		set nhb_down_neg [llength [lindex [measure hbonds 4.8 30 $down_neg $water] 0]]
+		set nhb_down_hphobe [llength [lindex [measure hbonds 4.8 30 $down_hphobe $water] 0]]
+
+		# Write data to file
+		set frame_num [expr $realtime + $i]
+		puts $file "$frame_num\t$nhb\t$nhb_up_polar\t$nhb_up_pos\t$nhb_up_neg\t$nhb_up_hphobe\t$nhb_down_polar\t$nhb_down_pos\t$nhb_down_neg\t$nhb_down_hphobe"
+	
+
+	}
+	
+	# Close file to write entire buffer
+	close $file
+	 
+}
+
+# Make a note if the file was re-run, since it is in append mode.
+set datfile [open $str_outfile a]
+set vmd_time [clock scan now]
+puts $datfile "RUN $vmd_time"
+close $datfile
+
+mol new $str_psf
+set interval_start 0
+set interval_end [expr $loadsize - 1]
+mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+# Load from 1st dcd file
+while {$nf == $loadsize} {
+	set cnt_realtime $interval_start
+	# Function
+	hbonds_byres_1 $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 1st and 2nd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+
+	# Function
+	hbonds_byres_1 $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 2nd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	hbonds_byres_1 $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 2nd and 3rd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	hbonds_byres_1 $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 3rd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	hbonds_byres_1 $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Calculate for the last few frames
+set cnt_realtime [expr $cnt_realtime + $loadsize]
+# Function
+hbonds_byres_1 $str_outfile $cnt_realtime
+
+# Clean up
+mol delete top
+exit
