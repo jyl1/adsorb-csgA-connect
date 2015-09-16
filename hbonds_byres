@@ -82,16 +82,37 @@ proc hbonds_byres_1 { logFP realtime} {
 		$down_hphobe frame $i
 
 		# Calculate H Bonds
-		set nhb [llength [lindex [measure hbonds 4.8 30 $prot $water] 0]]
-		set nhb_up_polar [llength [lindex [measure hbonds 4.8 30 $up_polar $water] 0]]
-		set nhb_up_pos [llength [lindex [measure hbonds 4.8 30 $up_pos $water] 0]]
-		set nhb_up_neg [llength [lindex [measure hbonds 4.8 30 $up_neg $water] 0]]
-		set nhb_up_hphobe [llength [lindex [measure hbonds 4.8 30 $up_hphobe $water] 0]]
-		set nhb_down_polar [llength [lindex [measure hbonds 4.8 30 $down_polar $water] 0]]
-		set nhb_down_pos [llength [lindex [measure hbonds 4.8 30 $down_pos $water] 0]]
-		set nhb_down_neg [llength [lindex [measure hbonds 4.8 30 $down_neg $water] 0]]
-		set nhb_down_hphobe [llength [lindex [measure hbonds 4.8 30 $down_hphobe $water] 0]]
-
+		#	Protein-water as donor-acceptor
+		set n1 [llength [lindex [measure hbonds 4.8 30 $prot $water] 0]]
+		set n1_up_polar [llength [lindex [measure hbonds 4.8 30 $up_polar $water] 0]]
+		set n1_up_pos [llength [lindex [measure hbonds 4.8 30 $up_pos $water] 0]]
+		set n1_up_neg [llength [lindex [measure hbonds 4.8 30 $up_neg $water] 0]]
+		set n1_up_hphobe [llength [lindex [measure hbonds 4.8 30 $up_hphobe $water] 0]]
+		set n1_down_polar [llength [lindex [measure hbonds 4.8 30 $down_polar $water] 0]]
+		set n1_down_pos [llength [lindex [measure hbonds 4.8 30 $down_pos $water] 0]]
+		set n1_down_neg [llength [lindex [measure hbonds 4.8 30 $down_neg $water] 0]]
+		set n1_down_hphobe [llength [lindex [measure hbonds 4.8 30 $down_hphobe $water] 0]]
+		#	Switch
+		set n2 [llength [lindex [measure hbonds 4.8 30 $water $prot] 0]]
+		set n2_up_polar [llength [lindex [measure hbonds 4.8 30 $water $up_polar] 0]]
+		set n2_up_pos [llength [lindex [measure hbonds 4.8 30 $water $up_pos] 0]]
+		set n2_up_neg [llength [lindex [measure hbonds 4.8 30 $water $up_neg] 0]]
+		set n2_up_hphobe [llength [lindex [measure hbonds 4.8 30 $water $up_hphobe] 0]]
+		set n2_down_polar [llength [lindex [measure hbonds 4.8 30 $water $down_polar] 0]]
+		set n2_down_pos [llength [lindex [measure hbonds 4.8 30 $water $down_pos] 0]]
+		set n2_down_neg [llength [lindex [measure hbonds 4.8 30 $water $down_neg] 0]]
+		set n2_down_hphobe [llength [lindex [measure hbonds 4.8 30 $water $down_hphobe] 0]]
+		#	Sum
+		set nhb [expr $n1 +  $n2]
+		set nhb_up_polar [expr $n1_up_polar + $n2_up_polar]
+		set nhb_up_pos [expr $n1_up_pos + $n2_up_pos]
+		set nhb_up_neg [expr $n1_up_neg + $n2_up_neg]
+		set nhb_up_hphobe [expr $n1_up_hphobe + $n2_up_hphobe]
+		set nhb_down_polar [expr $n1_down_polar + $n2_down_polar]
+		set nhb_down_pos [expr $n1_down_pos + $n2_down_pos]
+		set nhb_down_neg [expr $n1_down_neg + $n2_down_neg]
+		set nhb_down_hphobe [expr $n1_down_hphobe + $n2_down_hphobe]
+		
 		# Write data to file
 		set frame_num [expr $realtime + $i]
 		puts $file "$frame_num\t$nhb\t$nhb_up_polar\t$nhb_up_pos\t$nhb_up_neg\t$nhb_up_hphobe\t$nhb_down_polar\t$nhb_down_pos\t$nhb_down_neg\t$nhb_down_hphobe"
