@@ -204,7 +204,7 @@ if {$nf < $window} {
 	set cnt_realtime [expr $cnt_realtime + $window]
 	bfactor "protein" 0 [expr $window-1] $str_outfile $cnt_realtime
 	animate delete all
-	set interval_start [expr $interval_start + $window]
+	set interval_start [expr $interval_end + 1]
 # In case the transition is perfectly lined up to the end of the file
 } elseif {$nf == window} {
 	set interval_start 0
@@ -231,7 +231,7 @@ if {$nf < $window} {
 	set cnt_realtime [expr $cnt_realtime + $window]
 	bfactor "protein" 0 [expr $window-1] $str_outfile $cnt_realtime
 	animate delete all
-	set interval_start [expr $interval_start + $window]
+	set interval_start [expr $interval_end + 1]
 # In case the transition is perfectly lined up to the end of the file
 } elseif {$nf == window} {
 	set interval_start 0
