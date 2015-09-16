@@ -41,10 +41,10 @@ proc hbonds_byres_1 { logFP realtime} {
 	set up_polar [atomselect top "index $up_ind and \
 		resname SER THR CYS ASN GLN TYR HSD"]	
 	#		1.B Positive
-	set up_pos [atomselect top "index $up_ind and \
+	set up_acid [atomselect top "index $up_ind and \
 		resname ASP GLU"]
 	#		1.C Negative
-	set up_neg [atomselect top "index $up_ind and \
+	set up_base [atomselect top "index $up_ind and \
 		resname LYS ARG HIS"]
 	#		1.D Hydrophobic
 	set up_hphobe [atomselect top "index $up_ind and \
@@ -58,10 +58,10 @@ proc hbonds_byres_1 { logFP realtime} {
 	set down_polar [atomselect top "index $down_ind and \
 		resname SER THR CYS ASN GLN TYR HSD"]
 	#		2.B Positive
-	set down_pos [atomselect top "index $down_ind and \
+	set down_acid [atomselect top "index $down_ind and \
 		resname ASP GLU"]
 	#		2.C Negative
-	set down_neg [atomselect top "index $down_ind and \
+	set down_base [atomselect top "index $down_ind and \
 		resname LYS ARG HIS"]
 	#		2.D Hydrophobic
 	set down_hphobe [atomselect top "index $down_ind and \
@@ -73,49 +73,49 @@ proc hbonds_byres_1 { logFP realtime} {
 		$water frame $i
 		$prot frame $i
 		$up_polar frame $i
-		$up_pos frame $i
-		$up_neg frame $i
+		$up_acid frame $i
+		$up_base frame $i
 		$up_hphobe frame $i
 		$down_polar frame $i
-		$down_pos frame $i
-		$down_neg frame $i
+		$down_acid frame $i
+		$down_base frame $i
 		$down_hphobe frame $i
 
 		# Calculate H Bonds
 		#	Protein-water as donor-acceptor
 		set n1 [llength [lindex [measure hbonds 4.8 30 $prot $water] 0]]
 		set n1_up_polar [llength [lindex [measure hbonds 4.8 30 $up_polar $water] 0]]
-		set n1_up_pos [llength [lindex [measure hbonds 4.8 30 $up_pos $water] 0]]
-		set n1_up_neg [llength [lindex [measure hbonds 4.8 30 $up_neg $water] 0]]
+		set n1_up_acid [llength [lindex [measure hbonds 4.8 30 $up_acid $water] 0]]
+		set n1_up_base [llength [lindex [measure hbonds 4.8 30 $up_base $water] 0]]
 		set n1_up_hphobe [llength [lindex [measure hbonds 4.8 30 $up_hphobe $water] 0]]
 		set n1_down_polar [llength [lindex [measure hbonds 4.8 30 $down_polar $water] 0]]
-		set n1_down_pos [llength [lindex [measure hbonds 4.8 30 $down_pos $water] 0]]
-		set n1_down_neg [llength [lindex [measure hbonds 4.8 30 $down_neg $water] 0]]
+		set n1_down_acid [llength [lindex [measure hbonds 4.8 30 $down_acid $water] 0]]
+		set n1_down_base [llength [lindex [measure hbonds 4.8 30 $down_base $water] 0]]
 		set n1_down_hphobe [llength [lindex [measure hbonds 4.8 30 $down_hphobe $water] 0]]
 		#	Switch
 		set n2 [llength [lindex [measure hbonds 4.8 30 $water $prot] 0]]
 		set n2_up_polar [llength [lindex [measure hbonds 4.8 30 $water $up_polar] 0]]
-		set n2_up_pos [llength [lindex [measure hbonds 4.8 30 $water $up_pos] 0]]
-		set n2_up_neg [llength [lindex [measure hbonds 4.8 30 $water $up_neg] 0]]
+		set n2_up_acid [llength [lindex [measure hbonds 4.8 30 $water $up_acid] 0]]
+		set n2_up_base [llength [lindex [measure hbonds 4.8 30 $water $up_base] 0]]
 		set n2_up_hphobe [llength [lindex [measure hbonds 4.8 30 $water $up_hphobe] 0]]
 		set n2_down_polar [llength [lindex [measure hbonds 4.8 30 $water $down_polar] 0]]
-		set n2_down_pos [llength [lindex [measure hbonds 4.8 30 $water $down_pos] 0]]
-		set n2_down_neg [llength [lindex [measure hbonds 4.8 30 $water $down_neg] 0]]
+		set n2_down_acid [llength [lindex [measure hbonds 4.8 30 $water $down_acid] 0]]
+		set n2_down_base [llength [lindex [measure hbonds 4.8 30 $water $down_base] 0]]
 		set n2_down_hphobe [llength [lindex [measure hbonds 4.8 30 $water $down_hphobe] 0]]
 		#	Sum
 		set nhb [expr $n1 +  $n2]
 		set nhb_up_polar [expr $n1_up_polar + $n2_up_polar]
-		set nhb_up_pos [expr $n1_up_pos + $n2_up_pos]
-		set nhb_up_neg [expr $n1_up_neg + $n2_up_neg]
+		set nhb_up_acid [expr $n1_up_acid + $n2_up_acid]
+		set nhb_up_base [expr $n1_up_base + $n2_up_base]
 		set nhb_up_hphobe [expr $n1_up_hphobe + $n2_up_hphobe]
 		set nhb_down_polar [expr $n1_down_polar + $n2_down_polar]
-		set nhb_down_pos [expr $n1_down_pos + $n2_down_pos]
-		set nhb_down_neg [expr $n1_down_neg + $n2_down_neg]
+		set nhb_down_acid [expr $n1_down_acid + $n2_down_acid]
+		set nhb_down_base [expr $n1_down_base + $n2_down_base]
 		set nhb_down_hphobe [expr $n1_down_hphobe + $n2_down_hphobe]
 		
 		# Write data to file
 		set frame_num [expr $realtime + $i]
-		puts $file "$frame_num\t$nhb\t$nhb_up_polar\t$nhb_up_pos\t$nhb_up_neg\t$nhb_up_hphobe\t$nhb_down_polar\t$nhb_down_pos\t$nhb_down_neg\t$nhb_down_hphobe"
+		puts $file "$frame_num\t$nhb\t$nhb_up_polar\t$nhb_up_acid\t$nhb_up_base\t$nhb_up_hphobe\t$nhb_down_polar\t$nhb_down_acid\t$nhb_down_base\t$nhb_down_hphobe"
 	
 
 	}
