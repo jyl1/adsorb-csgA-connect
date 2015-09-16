@@ -1,0 +1,227 @@
+# YJL 9/14/15
+# csgA adsorption project
+# surfaceContact_1.tcl - Outputs the number of interactions between the protein and the surface within the 
+# user-specificed cutoff distance
+# NB: You have to decide how many dcd files at the moment. (potential future fix)
+# Usage: (under user-edited variables for the wrapper)
+# 	str_psf		= patfhile of the psf file
+#	str_dcd_1	= patfhile of the 1st dcd file
+# 	str_dcd_2	= "			"	  2nd
+#	str_dcd_3	= "			"     3rd
+#	str_outfile	= pathfile of the desired output file, eg out.dat
+#	cutoffDist	= distance in angstroms between protein atom and surface atom to count as contact
+#
+# Output:
+#	Frame #
+#	Number of protein atoms involved in protein-surface interactions
+#	Number of protein-surface interactions
+#	Number of neutral (polar) interactions
+#	Number of acidic interactions
+#	Number of basic interactions
+#	Number of hydrophobic interactions
+#	Number of aromatic interactions
+
+# ================ User-edited variables for the wrapper =============
+set str_psf test.psf
+set str_dcd_1 test_short1.dcd
+set str_dcd_2 test_short2.dcd
+set str_dcd_3 test_short3.dcd
+set str_outfile outtest_surfContact.dat
+set loadsize 1000
+set cutoffDist 5.5
+# ================ End user-edited wrapper variables =================
+
+proc surfaceContact_1 { cutoff logFP realtime} {
+	# Open file in append mode
+	set file [open $logFP a]
+
+	# Loop through all the frames
+	set nf [molinfo top get numframes]
+	
+	# Define selections
+	#	Surface
+	set surf [atomselect top "not protein and not water and not ions"]
+	#	Protein
+	set prot [atomselect top protein]
+	set ind [$prot get index]
+	#	Protein subselections
+	#		Neutral
+	set polar [atomselect top "index $ind and \
+		resname SER THR CYS ASN GLN TYR HSD"]	
+	#		Positive
+	set acid [atomselect top "index $ind and \
+		resname ASP GLU"]
+	#		Negative
+	set base [atomselect top "index $ind and \
+		resname LYS ARG HIS"]
+	#		Hydrophobic
+	set hphobe [atomselect top "index $ind and \
+		resname GLY ALA ILE LEU VAL PRO PHE MET TRP"]
+	#		Aromatic
+	set aro [atomselect top "index $ind and \
+		resname TYR PHE TRP HIS HSD"]
+	
+	# Loop through frames and determine hydrogen bonds
+	for {set i 0} {$i < $nf} {incr i} {
+		# Update selections to frame i
+		$surf frame $i
+		$prot frame $i
+		$polar frame $i
+		$acid frame $i
+		$basic frame $i
+		$hphobe frame $i
+		$aro frame $i
+
+		# Calculate Protein-Surface Interactions
+		#	1.A List of interactions presented as protein atoms involved in interactions 
+		#	(general, multiple atoms listed more than once)
+		set cInd [lindex [measure contacts $cutoff $prot $surf] 0]
+		# 	1.B Number of total protein-surface interactions
+		set l_cInd [llength $cInd]
+		if {$l_cInd > 0} {
+			#	1.C List of protein atoms involved in interactions (unique, each atom only listed once)
+			set protTouching [atomselect top "protein and index $cInd"]
+			set cResID [$protTouching get residue]
+			#	1.D Number of protein atoms involved in interactions
+			set l_cResID [llength $cResID]
+		} else {
+			set l_cResID 0
+		}
+		
+		#	2.A Polar Atoms
+		set num_polar	[getCntNum $cutoff $polar $surf]
+		#	2.B Positive Atoms
+		set num_acid	[getCntNum $cutoff $acid $surf]
+		#	2.C Negative Atoms
+		set num_basic	[getCntNum $cutoff $basic $surf]
+		#	2.D Hydrophobic Atoms
+		set num_hphobe	[getCntNum $cutoff $hphobe $surf]
+		#	2.E Aromatic Atoms
+		set num_aro	[getCntNum $cutoff $aro $surf]
+				
+		# Write data to file
+		set frame_num [expr $realtime + $i]
+		puts $file "$frame_num\t$l_cResID\t$l_cInd\t$num_polar\t$num_acid\t$num_basic\t$num_hphobe\t$num_aro\t$cInd"
+	
+
+	}
+	
+	# Close file to write entire buffer
+	close $file
+	 
+}
+
+proc getCntNum {cutoff selection surf} {
+	set sel $selection
+	set tempInd [lindex [measure contacts $cutoff $sel $surf] 0]
+	set l_tempInd [llength $tempInd]
+	return $l_tempInd
+}
+
+# Make a note if the file was re-run, since it is in append mode.
+set datfile [open $str_outfile a]
+set vmd_time [clock scan now]
+puts $datfile "RUN $vmd_time"
+close $datfile
+
+mol new $str_psf
+set interval_start 0
+set interval_end [expr $loadsize - 1]
+mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+# Load from 1st dcd file
+while {$nf == $loadsize} {
+	set cnt_realtime $interval_start
+	# Function
+	surfaceContact_1 $cutoffDist $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 1st and 2nd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+
+	# Function
+	surfaceContact_1 $cutoffDist $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 2nd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	surfaceContact_1 $cutoffDist $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 2nd and 3rd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	surfaceContact_1 $cutoffDist $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 3rd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	surfaceContact_1 $cutoffDist $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Calculate for the last few frames
+set cnt_realtime [expr $cnt_realtime + $loadsize]
+# Function
+surfaceContact_1 $cutoffDist $str_outfile $cnt_realtime
+
+# Clean up
+mol delete top
+exit
