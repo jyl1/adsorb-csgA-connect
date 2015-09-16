@@ -1,0 +1,165 @@
+# YJL 9/14/15
+# csgA adsorption project
+# hbonds_bkbn_1.tcl - Outputs the number of hydrogen bonds within the protein backbone.
+# NB: You have to decide how many dcd files at the moment. (potential future fix)
+# Usage: (under user-edited variables for the wrapper)
+# 	str_psf		= patfhile of the psf file
+#	str_dcd_1	= patfhile of the 1st dcd file
+# 	str_dcd_2	= "			"	  2nd
+#	str_dcd_3	= "			"     3rd
+#	str_outfile	= pathfile of the desired output file, eg out.dat
+
+# ================ User-edited variables for the wrapper =============
+set str_psf test.psf
+set str_dcd_1 test_short1.dcd
+set str_dcd_2 test_short2.dcd
+set str_dcd_3 test_short3.dcd
+set str_outfile outtest_hbonds_bkbn_test.dat
+set loadsize 10
+# ================ End user-edited wrapper variables =================
+
+proc hbonds_bkbn_1 { logFP realtime} {
+	# Open file in append mode
+	set file [open $logFP a]
+
+	# Loop through all the frames
+	set nf [molinfo top get numframes]
+	
+	# Define selections
+	#	Protein
+	set D [atomselect top "backbone and name N"]
+	set A [atomselect top "backbone and name O"]
+	
+	# Loop through frames and determine hydrogen bonds
+	for {set i 0} {$i < $nf} {incr i} {
+		# Update selections to frame i
+		$D frame $i
+		$A frame $i
+		
+		# Get a list of all H Bonds
+		#	This is a list of all donors followed by a list of all the acceptors
+		set hb [measure hbonds 4.8 30 $D $A]
+		# Get the number of hbonds
+		set nhb [llength [lindex $hb 0]]
+
+		# 
+
+		# Write data to file
+		set frame_num [expr $realtime + $i]
+		puts $file "$frame_num\t$nhb\t$hb"
+	
+
+	}
+	
+	# Close file to write entire buffer
+	close $file
+	 
+}
+
+# Make a note if the file was re-run, since it is in append mode.
+set datfile [open $str_outfile a]
+set vmd_time [clock scan now]
+puts $datfile "RUN $vmd_time"
+close $datfile
+
+mol new $str_psf
+set interval_start 0
+set interval_end [expr $loadsize - 1]
+mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+# Load from 1st dcd file
+while {$nf == $loadsize} {
+	set cnt_realtime $interval_start
+	# Function
+	hbonds_bkbn_1 $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_1 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 1st and 2nd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+
+	# Function
+	hbonds_bkbn_1 $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 2nd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	hbonds_bkbn_1 $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_2 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Transition between 2nd and 3rd dcd file
+if {$nf < $loadsize} {
+	# Fill the remainder of frames needed to achieve loadsize
+	set df [expr $loadsize-$nf]
+	set interval_start 0
+	set interval_end [expr $df - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	hbonds_bkbn_1 $str_outfile $cnt_realtime
+	# Cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_end + 1]
+# In case the transition is perfectly lined up to the end of the file
+} elseif {$nf == $loadsize } {
+	# Set things up for the 2nd dcd file
+	set interval_start 0
+}
+
+# Load from 3rd dcd file
+#	Set up 
+set interval_end [expr $interval_start + $loadsize - 1]
+mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+set nf [molinfo top get numframes]
+#	Run while loop
+while {$nf == $loadsize} {
+	set cnt_realtime [expr $cnt_realtime + $loadsize]
+	# Function
+	hbonds_bkbn_1 $str_outfile $cnt_realtime
+	# cleanup and initiate next round
+	animate delete all
+	set interval_start [expr $interval_start + $loadsize]
+	set interval_end [expr $interval_start + $loadsize - 1]
+	mol addfile $str_dcd_3 first $interval_start last $interval_end waitfor all
+	set nf [molinfo top get numframes]
+}
+
+# Calculate for the last few frames
+set cnt_realtime [expr $cnt_realtime + $loadsize]
+# Function
+hbonds_bkbn_1 $str_outfile $cnt_realtime
+
+# Clean up
+mol delete top
+#exit
