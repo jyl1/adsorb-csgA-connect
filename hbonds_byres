@@ -9,6 +9,19 @@
 # 	str_dcd_2	= "			"	  2nd
 #	str_dcd_3	= "			"     3rd
 #	str_outfile	= pathfile of the desired output file, eg out.dat
+#
+# Output: 
+# 	Frame number
+#	Total number of protein-water hbonds
+#	"Up"	Nonpolar residues hbonds
+#		Acid residues
+#		Base residues
+#		Hydrophobic residues
+#	"Down"	Nonpolar residues hbonds
+#		Acid residues
+#		Base residues
+#		Hydrophobic residues
+
 
 # ================ User-edited variables for the wrapper =============
 set str_psf test.psf
