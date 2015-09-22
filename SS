@@ -17,12 +17,13 @@
 #	Resid of those residues
 
 # ================ User-edited variables for the wrapper =============
-set str_psf test.psf
-set str_dcd_1 test_short1.dcd
-set str_dcd_2 test_short2.dcd
-set str_dcd_3 test_short3.dcd
-set str_outfile outtest_SS_1.dat
-set loadsize 10
+set exp LH_90
+set str_psf ${exp}.psf
+set str_dcd_1 eq1_${exp}.dcd
+set str_dcd_2 eq2_${exp}.dcd
+set str_dcd_3 eq3_${exp}.dcd
+set str_outfile gr_out_SS_${exp}.dat
+set loadsize 1000
 set str_SS E
 # ================ End user-edited wrapper variables =================
 
