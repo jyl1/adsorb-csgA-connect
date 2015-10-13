@@ -43,11 +43,13 @@ proc SS_1 { SS logFP realtime} {
 	
 	# Loop through frames and determine hydrogen bonds
 	for {set i 0} {$i < $nf} {incr i} {
+		# Update molecule secondary structure (STRIDE)
+		animate goto $i
+		display update ui
+		mol ssrecalc top
+		
 		# Update selections to frame i
 		$sel frame $i
-		
-		# Update molecule secondary structure (STRIDE)
-		mol ssrecalc top
 		
 		# Calculate specificed Secondary Structure 
 		#	List of residues involved
